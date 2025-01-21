@@ -91,3 +91,22 @@ for l in $src $tgt; do
     cat $tmp/train.tags.fr-en.clean.$l >> $TRAIN
 done
 
+BPE_CODE=$prep/code
+
+echo "learn_bpe.py on ${TRAIN}..."
+python $BPEROOT/learn_bpe.py -s $BPE_TOKENS < $TRAIN > $BPE_CODE
+
+# Apply BPE to the appropriate files in your directory
+for L in $src $tgt; do
+    # Apply BPE to training data
+    echo "apply_bpe.py to train.$L..."
+    python $BPEROOT/apply_bpe.py -c $BPE_CODE < $tmp/train.tags.fr-en.clean.$L > $prep/train.$L
+
+    # Apply BPE to validation data
+    echo "apply_bpe.py to valid.$L..."
+    python $BPEROOT/apply_bpe.py -c $BPE_CODE < $tmp/IWSLT13.TED.dev2010.fr-en.$L > $prep/valid.$L
+
+    # Apply BPE to test data
+    echo "apply_bpe.py to test.$L..."
+    python $BPEROOT/apply_bpe.py -c $BPE_CODE < $tmp/IWSLT13.TED.tst2010.fr-en.$L > $prep/test.$L
+done

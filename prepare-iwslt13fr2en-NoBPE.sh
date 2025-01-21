@@ -1,50 +1,50 @@
 #!/usr/bin/env bash
-#
-# Adapted from https://github.com/facebookresearch/MIXER/blob/master/prepareData.sh
 
 echo 'Cloning Moses github repository (for tokenization scripts)...'
-git clone https://github.com/moses-smt/mosesdecoder.git
+if [ ! -d "mosesdecoder" ]; then
+    git clone https://github.com/moses-smt/mosesdecoder.git
+else
+    echo "Moses repository already cloned. Skipping..."
+fi
 
-#echo 'Cloning Subword NMT repository (for BPE pre-processing)...'
-#git clone https://github.com/rsennrich/subword-nmt.git
+echo 'Cloning Subword NMT repository (for BPE pre-processing)...'
+if [ ! -d "subword-nmt" ]; then
+    git clone https://github.com/rsennrich/subword-nmt.git
+else
+    echo "Subword NMT repository already cloned. Skipping..."
+fi
 
 SCRIPTS=mosesdecoder/scripts
 TOKENIZER=$SCRIPTS/tokenizer/tokenizer.perl
 LC=$SCRIPTS/tokenizer/lowercase.perl
+NORM_PUNC=$SCRIPTS/tokenizer/normalize-punctuation.perl
+REM_NON_PRINT_CHAR=$SCRIPTS/tokenizer/remove-non-printing-char.perl
 CLEAN=$SCRIPTS/training/clean-corpus-n.perl
 BPEROOT=subword-nmt/subword_nmt
 BPE_TOKENS=10000
 
-URL="http://dl.fbaipublicfiles.com/fairseq/data/iwslt14/de-en.tgz"
-GZ=de-en.tgz
+CORPORA=(
+    "fr-en/train.tags.fr-en"
+)
 
-if [ ! -d "$SCRIPTS" ]; then
-    echo "Please set SCRIPTS variable correctly to point to Moses scripts."
-    exit
-fi
+DEVFILES=(
+    "fr-en/IWSLT13.TED.dev2010.fr-en.en.xml"
+    "fr-en/IWSLT13.TED.dev2010.fr-en.fr.xml"
+)
 
-src=de
+TESTFILES=(
+    "fr-en/IWSLT13.TED.tst2010.fr-en.en.xml"
+    "fr-en/IWSLT13.TED.tst2010.fr-en.fr.xml"
+)
+
+src=fr
 tgt=en
-lang=de-en
-prep=iwslt14.tokenized.de-en
+lang=fr-en
+prep=iwslt13.tokenized.fr-en
 tmp=$prep/tmp
 orig=orig
 
 mkdir -p $orig $tmp $prep
-
-echo "Downloading data from ${URL}..."
-cd $orig
-wget "$URL"
-
-if [ -f $GZ ]; then
-    echo "Data successfully downloaded."
-else
-    echo "Data not successfully downloaded."
-    exit
-fi
-
-tar zxvf $GZ
-cd ..
 
 echo "pre-processing train data..."
 for l in $src $tgt; do
@@ -67,9 +67,11 @@ for l in $src $tgt; do
     perl $LC < $tmp/train.tags.$lang.clean.$l > $tmp/train.tags.$lang.$l
 done
 
+echo "Training data preprocessing completed!"
+
 echo "pre-processing valid/test data..."
 for l in $src $tgt; do
-    for o in `ls $orig/$lang/IWSLT14.TED*.$l.xml`; do
+    for o in `ls $orig/$lang/IWSLT13.TED*.$l.xml`; do
     fname=${o##*/}
     f=$tmp/${fname%.*}
     echo $o $f
@@ -83,33 +85,28 @@ for l in $src $tgt; do
     done
 done
 
-
-echo "creating train, valid, test..."
-for l in $src $tgt; do
-    awk '{if (NR%23 == 0)  print $0; }' $tmp/train.tags.de-en.$l > $tmp/valid.$l
-    awk '{if (NR%23 != 0)  print $0; }' $tmp/train.tags.de-en.$l > $tmp/train.$l
-
-    cat $tmp/IWSLT14.TED.dev2010.de-en.$l \
-        $tmp/IWSLT14.TEDX.dev2012.de-en.$l \
-        $tmp/IWSLT14.TED.tst2010.de-en.$l \
-        $tmp/IWSLT14.TED.tst2011.de-en.$l \
-        $tmp/IWSLT14.TED.tst2012.de-en.$l \
-        > $tmp/test.$l
-done
-
-TRAIN=$tmp/train.en-de
-BPE_CODE=$prep/code
+TRAIN=$tmp/train.fr-en
 rm -f $TRAIN
 for l in $src $tgt; do
-    cat $tmp/train.$l >> $TRAIN
+    cat $tmp/train.tags.fr-en.clean.$l >> $TRAIN
 done
+
+BPE_CODE=$prep/code
 
 echo "learn_bpe.py on ${TRAIN}..."
 python $BPEROOT/learn_bpe.py -s $BPE_TOKENS < $TRAIN > $BPE_CODE
 
+# Apply BPE to the appropriate files in your directory
 for L in $src $tgt; do
-    for f in train.$L valid.$L test.$L; do
-        echo "apply_bpe.py to ${f}..."
-        python $BPEROOT/apply_bpe.py -c $BPE_CODE < $tmp/$f > $prep/$f
-    done
+    # Apply BPE to training data
+    echo "apply_bpe.py to train.$L..."
+    python $BPEROOT/apply_bpe.py -c $BPE_CODE < $tmp/train.tags.fr-en.clean.$L > $prep/train.$L
+
+    # Apply BPE to validation data
+    echo "apply_bpe.py to valid.$L..."
+    python $BPEROOT/apply_bpe.py -c $BPE_CODE < $tmp/IWSLT13.TED.dev2010.fr-en.$L > $prep/valid.$L
+
+    # Apply BPE to test data
+    echo "apply_bpe.py to test.$L..."
+    python $BPEROOT/apply_bpe.py -c $BPE_CODE < $tmp/IWSLT13.TED.tst2010.fr-en.$L > $prep/test.$L
 done
