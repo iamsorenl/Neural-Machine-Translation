@@ -7,21 +7,10 @@ else
     echo "Moses repository already cloned. Skipping..."
 fi
 
-echo 'Cloning Subword NMT repository (for BPE pre-processing)...'
-if [ ! -d "subword-nmt" ]; then
-    git clone https://github.com/rsennrich/subword-nmt.git
-else
-    echo "Subword NMT repository already cloned. Skipping..."
-fi
-
 SCRIPTS=mosesdecoder/scripts
 TOKENIZER=$SCRIPTS/tokenizer/tokenizer.perl
 LC=$SCRIPTS/tokenizer/lowercase.perl
-NORM_PUNC=$SCRIPTS/tokenizer/normalize-punctuation.perl
-REM_NON_PRINT_CHAR=$SCRIPTS/tokenizer/remove-non-printing-char.perl
 CLEAN=$SCRIPTS/training/clean-corpus-n.perl
-BPEROOT=subword-nmt/subword_nmt
-BPE_TOKENS=10000
 
 CORPORA=(
     "fr-en/train.tags.fr-en"
@@ -67,6 +56,10 @@ for l in $src $tgt; do
     perl $LC < $tmp/train.tags.$lang.clean.$l > $tmp/train.tags.$lang.$l
 done
 
+# Rename the cleaned training files
+mv $tmp/train.tags.$lang.$src $prep/train.$src
+mv $tmp/train.tags.$lang.$tgt $prep/train.$tgt
+
 echo "Training data preprocessing completed!"
 
 echo "pre-processing valid/test data..."
@@ -85,28 +78,11 @@ for l in $src $tgt; do
     done
 done
 
-TRAIN=$tmp/train.fr-en
-rm -f $TRAIN
-for l in $src $tgt; do
-    cat $tmp/train.tags.fr-en.clean.$l >> $TRAIN
-done
+# Rename the validation and test files
+mv $tmp/IWSLT13.TED.dev2010.fr-en.$src $prep/valid.$src
+mv $tmp/IWSLT13.TED.dev2010.fr-en.$tgt $prep/valid.$tgt
+mv $tmp/IWSLT13.TED.tst2010.fr-en.$src $prep/test.$src
+mv $tmp/IWSLT13.TED.tst2010.fr-en.$tgt $prep/test.$tgt
 
-BPE_CODE=$prep/code
-
-echo "learn_bpe.py on ${TRAIN}..."
-python $BPEROOT/learn_bpe.py -s $BPE_TOKENS < $TRAIN > $BPE_CODE
-
-# Apply BPE to the appropriate files in your directory
-for L in $src $tgt; do
-    # Apply BPE to training data
-    echo "apply_bpe.py to train.$L..."
-    python $BPEROOT/apply_bpe.py -c $BPE_CODE < $tmp/train.tags.fr-en.clean.$L > $prep/train.$L
-
-    # Apply BPE to validation data
-    echo "apply_bpe.py to valid.$L..."
-    python $BPEROOT/apply_bpe.py -c $BPE_CODE < $tmp/IWSLT13.TED.dev2010.fr-en.$L > $prep/valid.$L
-
-    # Apply BPE to test data
-    echo "apply_bpe.py to test.$L..."
-    python $BPEROOT/apply_bpe.py -c $BPE_CODE < $tmp/IWSLT13.TED.tst2010.fr-en.$L > $prep/test.$L
-done
+echo "File renaming completed! Processed files:"
+echo "$prep/train.$src, $prep/train.$tgt, $prep/valid.$src, $prep/valid.$tgt, $prep/test.$src, $prep/test.$tgt"
