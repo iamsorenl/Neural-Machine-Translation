@@ -21,7 +21,7 @@ NORM_PUNC=$SCRIPTS/tokenizer/normalize-punctuation.perl
 REM_NON_PRINT_CHAR=$SCRIPTS/tokenizer/remove-non-printing-char.perl
 CLEAN=$SCRIPTS/training/clean-corpus-n.perl
 BPEROOT=subword-nmt/subword_nmt
-BPE_TOKENS=40000
+BPE_TOKENS=10000
 
 CORPORA=(
     "fr-en/train.tags.fr-en"
@@ -86,19 +86,8 @@ for l in $src $tgt; do
 done
 
 TRAIN=$tmp/train.fr-en
-BPE_CODE=$prep/code
 rm -f $TRAIN
 for l in $src $tgt; do
-    cat $tmp/train.$l >> $TRAIN
-done
-
-echo "learn_bpe.py on ${TRAIN}..."
-python $BPEROOT/learn_bpe.py -s $BPE_TOKENS < $TRAIN > $BPE_CODE
-
-for L in $src $tgt; do
-    for f in train.$L valid.$L test.$L; do
-        echo "apply_bpe.py to ${f}..."
-        python3 $BPEROOT/apply_bpe.py -c $BPE_CODE < $tmp/$f > $prep/$f
-    done
+    cat $tmp/train.tags.fr-en.clean.$l >> $TRAIN
 done
 

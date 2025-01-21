@@ -178,3 +178,6 @@ mosesdecoder/
 
 # Subword NMT
 subword-nmt/
+
+# IWSLT13 tokenized data
+iwslt13.tokenized.fr-en/
