@@ -172,3 +172,9 @@ cython_debug/
 
 # macOS
 .DS_Store
+
+# Moses decoder
+mosesdecoder/
+
+# Subword NMT
+subword-nmt/
