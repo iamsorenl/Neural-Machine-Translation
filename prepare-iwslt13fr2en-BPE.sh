@@ -16,6 +16,7 @@ fi
 
 SCRIPTS=mosesdecoder/scripts
 TOKENIZER=$SCRIPTS/tokenizer/tokenizer.perl
+LC=$SCRIPTS/tokenizer/lowercase.perl
 NORM_PUNC=$SCRIPTS/tokenizer/normalize-punctuation.perl
 REM_NON_PRINT_CHAR=$SCRIPTS/tokenizer/remove-non-printing-char.perl
 CLEAN=$SCRIPTS/training/clean-corpus-n.perl
@@ -24,6 +25,16 @@ BPE_TOKENS=40000
 
 CORPORA=(
     "fr-en/train.tags.fr-en"
+)
+
+DEVFILES=(
+    "fr-en/IWSLT13.TED.dev2010.fr-en.en.xml"
+    "fr-en/IWSLT13.TED.dev2010.fr-en.fr.xml"
+)
+
+TESTFILES=(
+    "fr-en/IWSLT13.TED.tst2010.fr-en.en.xml"
+    "fr-en/IWSLT13.TED.tst2010.fr-en.fr.xml"
 )
 
 src=fr
@@ -57,3 +68,20 @@ for l in $src $tgt; do
 done
 
 echo "Training data preprocessing completed!"
+
+echo "pre-processing valid/test data..."
+for l in $src $tgt; do
+    for o in `ls $orig/$lang/IWSLT13.TED*.$l.xml`; do
+    fname=${o##*/}
+    f=$tmp/${fname%.*}
+    echo $o $f
+    grep '<seg id' $o | \
+        sed -e 's/<seg id="[0-9]*">\s*//g' | \
+        sed -e 's/\s*<\/seg>\s*//g' | \
+        sed -e "s/\’/\'/g" | \
+    perl $TOKENIZER -threads 8 -l $l | \
+    perl $LC > $f
+    echo ""
+    done
+done
+
