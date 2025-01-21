@@ -23,7 +23,7 @@ BPEROOT=subword-nmt/subword_nmt
 BPE_TOKENS=40000
 
 CORPORA=(
-    "train.tags.fr-en"
+    "fr-en/train.tags.fr-en"
 )
 
 src=fr
@@ -31,25 +31,29 @@ tgt=en
 lang=fr-en
 prep=iwslt13.tokenized.fr-en
 tmp=$prep/tmp
-orig=fr-en
+orig=orig
 
 mkdir -p $orig $tmp $prep
 
-echo "Pre-processing train data..."
+echo "pre-processing train data..."
 for l in $src $tgt; do
-    rm -f $tmp/train.$l
-    for f in "${CORPORA[@]}"; do
-        # Extract text between <transcript> and </transcript> and clean it
-        sed -n '/<transcript>/,/<\/transcript>/p' $orig/$f.$l | \
-            sed -e 's/<transcript>//g' | \
-            sed -e 's/<\/transcript>//g' | \
-            perl $NORM_PUNC $l | \
-            perl $REM_NON_PRINT_CHAR | \
-            perl $TOKENIZER -threads 8 -a -l $l >> $tmp/train.$l
-    done
-done
+    f=train.tags.$lang.$l
+    tok=train.tags.$lang.tok.$l
 
-echo "Cleaning train data..."
-perl $CLEAN -ratio 1.5 $tmp/train $src $tgt $prep/train 1 250
+    cat $orig/$lang/$f | \
+    grep -v '<url>' | \
+    grep -v '<talkid>' | \
+    grep -v '<keywords>' | \
+    sed -e 's/<title>//g' | \
+    sed -e 's/<\/title>//g' | \
+    sed -e 's/<description>//g' | \
+    sed -e 's/<\/description>//g' | \
+    perl $TOKENIZER -threads 8 -l $l > $tmp/$tok
+    echo ""
+done
+perl $CLEAN -ratio 1.5 $tmp/train.tags.$lang.tok $src $tgt $tmp/train.tags.$lang.clean 1 175
+for l in $src $tgt; do
+    perl $LC < $tmp/train.tags.$lang.clean.$l > $tmp/train.tags.$lang.$l
+done
 
 echo "Training data preprocessing completed!"
