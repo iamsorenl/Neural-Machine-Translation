@@ -181,3 +181,6 @@ subword-nmt/
 
 # IWSLT13 tokenized data
 iwslt13.tokenized.fr-en/
+
+# Data bin
+data-bin/
