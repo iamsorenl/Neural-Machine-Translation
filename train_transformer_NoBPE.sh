@@ -1,5 +1,5 @@
-CUDA_VISIBLE_DEVICES=0 fairseq-train \
-    data-bin-NoBPE/iwslt13.tokenized.fr-en \
+CUDA_VISIBLE_DEVICES=5 fairseq-train \
+    data-bin-transformer-NoBPE/iwslt13.tokenized.fr-en \
     --arch transformer_iwslt_de_en --share-decoder-input-output-embed \
     --optimizer adam --adam-betas '(0.9, 0.98)' --clip-norm 0.0 \
     --lr 5e-4 --lr-scheduler inverse_sqrt --warmup-updates 4000 \
@@ -11,4 +11,5 @@ CUDA_VISIBLE_DEVICES=0 fairseq-train \
     --eval-bleu-detok moses \
     --eval-bleu-remove-bpe \
     --eval-bleu-print-samples \
-    --best-checkpoint-metric bleu --maximize-best-checkpoint-metric
+    --best-checkpoint-metric bleu --maximize-best-checkpoint-metric \
+    --max-epoch 10
